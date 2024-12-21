@@ -2,15 +2,15 @@
 	// Types
 	type Player = 0 | 1
 
-	type CurrentSetIndex = 0 | 1 | 2
-
-	type TiebreakPoint = [number, number]
-
 	type Point = 0 | 15 | 30 | 40 | 'Ad'
+
+	type Tiebreak = [number, number]
 
 	type Game = [Point, Point]
 
 	type Set = [number, number]
+
+	type CurrentSet = 0 | 1 | 2
 
 	// Data
 	const pointScoringMap = new Map<Point, Point>([
@@ -21,14 +21,14 @@
 	])
 
 	// Explicit State
-	const point: Game = $state([0, 0])
+	const game: Game = $state([0, 0])
 
-	const tiebreakPoint: TiebreakPoint = $state([0, 0])
+	const tiebreak: Tiebreak = $state([0, 0])
 
-	let currentSetIndex: CurrentSetIndex = $state(0)
+	let currentSet: CurrentSet = $state(0)
 
 	const sets: Set[] = $state([
-		[0, 0],
+		[5, 0],
 		[0, 0],
 		[0, 0],
 	])
@@ -38,6 +38,8 @@
 	let isTiebreak = $state(false)
 
 	// Derived State
+	const setScore = $derived(sets[currentSet])
+
 	const winner = $derived.by(() => {
 		if (setWinners.filter(player => player === 0).length === 2) {
 			return 'Player 1 Wins!'
@@ -47,65 +49,69 @@
 		}
 	})
 
-	const isWinner = $derived(!!winner)
+	const isWinner = $derived(Boolean(winner))
 
-	const isDeuce = $derived(point.every(score => score === 40))
+	const isDeuce = $derived(game.every(point => point === 40))
 
 	// State mutation functions
 	const resetGame = () => {
-		point[0] = 0
-		point[1] = 0
-		tiebreakPoint[0] = 0
-		tiebreakPoint[1] = 0
+		game[0] = 0
+		game[1] = 0
+		tiebreak[0] = 0
+		tiebreak[1] = 0
+	}
+
+	const resetMatch = () => {
+		resetGame()
+		currentSet = 0
+		sets[0] = [0, 0]
+		sets[1] = [0, 0]
+		sets[2] = [0, 0]
+		setWinners.length = 0
+		isTiebreak = false
 	}
 
 	const deuce = () => {
-		point[0] = 40
-		point[1] = 40
+		game[0] = 40
+		game[1] = 40
 	}
 
 	const scoreTiebreak = (winner: Player) => {
 		const loser = winner === 0 ? 1 : 0
-		const setScore = sets[currentSetIndex]
 
-		tiebreakPoint[winner]++
+		tiebreak[winner]++
 
-		if (
-			tiebreakPoint[winner] >= 7 &&
-			tiebreakPoint[loser] < tiebreakPoint[winner] - 1
-		) {
+		if (tiebreak[winner] >= 7 && tiebreak[loser] < tiebreak[winner] - 1) {
 			setScore[winner]++
-			currentSetIndex++
+			currentSet++
 			setWinners.push(winner)
-			resetGame()
-
 			isTiebreak = false
+			resetGame()
 		}
 	}
 
 	const scorePoint = (winner: Player) => {
 		const loser = winner === 0 ? 1 : 0
-		const setScore = sets[currentSetIndex]
 
-		if (point[winner] === 'Ad') {
+		if (game[winner] === 'Ad') {
 			setScore[winner]++
 			resetGame()
 			return
 		}
 
-		if (point[loser] === 'Ad') {
+		if (game[loser] === 'Ad') {
 			deuce()
 			return
 		}
 
 		if (isDeuce) {
-			point[winner] = 'Ad'
+			game[winner] = 'Ad'
 			return
 		}
 
-		point[winner] = pointScoringMap.get(point[winner]) as Point
+		game[winner] = pointScoringMap.get(game[winner]) as Point
 
-		if (point[winner] === 0) {
+		if (game[winner] === 0) {
 			setScore[winner]++
 			resetGame()
 		}
@@ -114,7 +120,7 @@
 			(setScore[winner] === 6 && setScore[loser] < 5) ||
 			(setScore[winner] >= 7 && setScore[loser] < setScore[winner] - 1)
 		) {
-			currentSetIndex++
+			currentSet++
 			setWinners.push(winner)
 		}
 
@@ -131,36 +137,49 @@
 			scorePoint(winner)
 		}
 	}
+
+	const restart = () => {
+		confirm('Are you sure you want to create a new match?') && resetMatch()
+	}
 </script>
 
 <div class="app">
-	<h1>JS Tennis 2025 (Svelte 5)</h1>
+	<div class="title">JS Tennis 2025 (Svelte 5)</div>
 	<div class="scoreboard">
-		{#each sets as set}
-			<div>
+		<div>
+			<div>&nbsp;</div>
+			<div>Player 1</div>
+			<div>Player 2</div>
+		</div>
+		{#each sets as set, i}
+			<div class="sets">
+				<div class="label">Set {i + 1}</div>
 				<div>{set[0]}</div>
 				<div>{set[1]}</div>
 			</div>
 		{/each}
 		{#if isTiebreak}
-			<div class="point">
-				<div>{tiebreakPoint[0]}</div>
-				<div>{tiebreakPoint[1]}</div>
+			<div class="points">
+				<div class="label">Point</div>
+				<div class="point">{tiebreak[0]}</div>
+				<div class="point">{tiebreak[1]}</div>
 			</div>
 		{:else}
-			<div>
+			<div class="points">
+				<div class="label">Point</div>
 				<div class="point">
-					{point[0]}
+					{game[0]}
 				</div>
 				<div class="point">
-					{point[1]}
+					{game[1]}
 				</div>
 			</div>
 		{/if}
 	</div>
 
 	{#if isWinner}
-		<p>{winner}</p>
+		<div class="winner">{winner}</div>
+		<button onclick={() => restart()}>Create New Match</button>
 	{:else}
 		<div class="buttons">
 			<button onclick={() => handleClick(0)}> Player 1 </button>
@@ -169,29 +188,49 @@
 	{/if}
 </div>
 
+<!-- Error: Unsupported Node.js version: v22.12.0. Please use Node 18 or Node 20 to build your project, or explicitly specify a runtime in your adapter configuration. -->
+
 <style>
 	.app {
-		min-height: 100dvh;
 		display: grid;
-		place-content: center;
+		align-content: center;
 		justify-items: center;
-		gap: 1rem;
+		gap: var(--size-3);
+		padding-inline-start: var(--size-3);
+	}
+
+	.title,
+	.winner {
+		font-size: var(--size-2);
+		font-weight: bold;
 	}
 
 	.scoreboard {
 		display: flex;
-		gap: 1rem;
-		padding-inline-start: 1ch;
-		font-size: 3rem;
+		gap: var(--size-3);
+		padding: var(--size-3);
+		font-size: var(--size-2);
+		border: 1px solid;
+	}
+
+	.points,
+	.sets {
+		justify-items: center;
 	}
 
 	.buttons {
 		display: flex;
-		gap: 1rem;
+		gap: var(--size);
+	}
+
+	button {
+		border: none;
+		background-color: var(--accent);
+		color: black;
+		font-size: var(--size-1-5);
 	}
 
 	.point {
-		width: 2ch;
 		color: var(--accent);
 	}
 </style>

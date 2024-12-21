@@ -3,6 +3,8 @@
 	let { children } = $props()
 </script>
 
-<main>
-	{@render children()}
-</main>
+<div id="wrapper">
+	<main>
+		{@render children()}
+	</main>
+</div>
