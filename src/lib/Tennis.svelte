@@ -1,4 +1,5 @@
 <script lang="ts">
+	// Types
 	type Player = 0 | 1
 
 	type CurrentSetIndex = 0 | 1 | 2
@@ -32,12 +33,14 @@
 
 	const winner = $derived.by(() => {
 		if (setWinners.filter(x => x === 0).length === 2) {
-			return 'Player 1'
+			return 'Player 1 Wins!'
 		}
 		if (setWinners.filter(x => x === 1).length === 2) {
-			return 'Player 2'
+			return 'Player 2 Wins!'
 		}
 	})
+
+	const isDisabled = $derived(!!winner)
 
 	const isDeuce = $derived(point.every(score => score === 40))
 
@@ -54,10 +57,11 @@
 
 	const scorePoint = (winner: Player) => {
 		const loser = winner === 0 ? 1 : 0
+		const setScore = sets[currentSetIndex]
 
 		if (point[winner] === 'Ad') {
 			resetGame()
-			sets[currentSetIndex][winner]++
+			setScore[winner]++
 			return
 		}
 
@@ -74,12 +78,11 @@
 		point[winner] = pointScoringMap.get(point[winner]) as Point
 
 		if (point[winner] === 0) {
-			sets[currentSetIndex][winner]++
+			setScore[winner]++
 			resetGame()
 			if (
-				(sets[currentSetIndex][winner] === 6 && sets[currentSetIndex][loser] < 5) ||
-				(sets[currentSetIndex][winner] >= 7 &&
-					sets[currentSetIndex][loser] < sets[currentSetIndex][winner] - 1)
+				(setScore[winner] === 6 && setScore[loser] < 5) ||
+				(setScore[winner] >= 7 && setScore[loser] < setScore[winner] - 1)
 			) {
 				currentSetIndex++
 				setWinners.push(winner)
@@ -93,31 +96,59 @@
 	}
 </script>
 
-<div class="scoreboard">
-	{#each sets as set}
+<div class="app">
+	<div class="scoreboard">
+		{#each sets as set}
+			<div>
+				<div>{set[0]}</div>
+				<div>{set[1]}</div>
+			</div>
+		{/each}
 		<div>
-			<div>{set[0]}</div>
-			<div>{set[1]}</div>
-		</div>
-	{/each}
-	<div>
-		<div>
-			{point[0]}
-		</div>
-		<div>
-			{point[1]}
+			<div class="point">
+				{point[0]}
+			</div>
+			<div class="point">
+				{point[1]}
+			</div>
 		</div>
 	</div>
+
+	{#snippet button(winner: Player, playerNumber: number)}
+		<button disabled={isDisabled} onclick={() => handleClick(winner)}>
+			Player {playerNumber}
+		</button>
+	{/snippet}
+
+	<div class="buttons">
+		{@render button(0, 1)}
+		{@render button(1, 2)}
+	</div>
+
+	<p>{winner}</p>
 </div>
 
-<button onclick={() => handleClick(0)}> Player 1 </button>
-<button onclick={() => handleClick(1)}> Player 2 </button>
-
-<p>{winner}</p>
-
 <style>
+	.app {
+		display: grid;
+		place-items: center;
+		gap: 1rem;
+	}
+
 	.scoreboard {
 		display: flex;
 		gap: 1rem;
+		padding-inline-start: 1ch;
+		font-size: 3rem;
+	}
+
+	.buttons {
+		display: flex;
+		gap: 1rem;
+	}
+
+	.point {
+		width: 2ch;
+		color: var(--accent);
 	}
 </style>
