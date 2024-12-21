@@ -4,9 +4,9 @@
 
 	type CurrentSetIndex = 0 | 1 | 2
 
-	type Point = 0 | 15 | 30 | 40 | 'Ad'
-
 	type TiebreakPoint = [number, number]
+
+	type Point = 0 | 15 | 30 | 40 | 'Ad'
 
 	type Game = [Point, Point]
 
@@ -28,7 +28,7 @@
 	let currentSetIndex: CurrentSetIndex = $state(0)
 
 	const sets: Set[] = $state([
-		[5, 5],
+		[0, 0],
 		[0, 0],
 		[0, 0],
 	])
@@ -39,15 +39,15 @@
 
 	// Derived State
 	const winner = $derived.by(() => {
-		if (setWinners.filter(x => x === 0).length === 2) {
+		if (setWinners.filter(player => player === 0).length === 2) {
 			return 'Player 1 Wins!'
 		}
-		if (setWinners.filter(x => x === 1).length === 2) {
+		if (setWinners.filter(player => player === 1).length === 2) {
 			return 'Player 2 Wins!'
 		}
 	})
 
-	const isDisabled = $derived(!!winner)
+	const isWinner = $derived(!!winner)
 
 	const isDeuce = $derived(point.every(score => score === 40))
 
@@ -55,9 +55,6 @@
 	const resetGame = () => {
 		point[0] = 0
 		point[1] = 0
-	}
-
-	const resetTiebreakPoint = () => {
 		tiebreakPoint[0] = 0
 		tiebreakPoint[1] = 0
 	}
@@ -80,7 +77,6 @@
 			setScore[winner]++
 			currentSetIndex++
 			setWinners.push(winner)
-			resetTiebreakPoint()
 			resetGame()
 
 			isTiebreak = false
@@ -92,8 +88,8 @@
 		const setScore = sets[currentSetIndex]
 
 		if (point[winner] === 'Ad') {
-			resetGame()
 			setScore[winner]++
+			resetGame()
 			return
 		}
 
@@ -112,13 +108,14 @@
 		if (point[winner] === 0) {
 			setScore[winner]++
 			resetGame()
-			if (
-				(setScore[winner] === 6 && setScore[loser] < 5) ||
-				(setScore[winner] >= 7 && setScore[loser] < setScore[winner] - 1)
-			) {
-				currentSetIndex++
-				setWinners.push(winner)
-			}
+		}
+
+		if (
+			(setScore[winner] === 6 && setScore[loser] < 5) ||
+			(setScore[winner] >= 7 && setScore[loser] < setScore[winner] - 1)
+		) {
+			currentSetIndex++
+			setWinners.push(winner)
 		}
 
 		if (setScore[winner] === 6 && setScore[loser] === 6) {
@@ -137,6 +134,7 @@
 </script>
 
 <div class="app">
+	<h1>JS Tennis 2025 (Svelte 5)</h1>
 	<div class="scoreboard">
 		{#each sets as set}
 			<div>
@@ -145,7 +143,7 @@
 			</div>
 		{/each}
 		{#if isTiebreak}
-			<div class="tiebreak">
+			<div class="point">
 				<div>{tiebreakPoint[0]}</div>
 				<div>{tiebreakPoint[1]}</div>
 			</div>
@@ -161,25 +159,22 @@
 		{/if}
 	</div>
 
-	{#snippet button(winner: Player, playerNumber: number)}
-		<button disabled={isDisabled} onclick={() => handleClick(winner)}>
-			Player {playerNumber}
-		</button>
-	{/snippet}
-
-	<div class="buttons">
-		{@render button(0, 1)}
-		{@render button(1, 2)}
-	</div>
-
-	<p>{isTiebreak}</p>
-	<p>{winner}</p>
+	{#if isWinner}
+		<p>{winner}</p>
+	{:else}
+		<div class="buttons">
+			<button onclick={() => handleClick(0)}> Player 1 </button>
+			<button onclick={() => handleClick(1)}> Player 2 </button>
+		</div>
+	{/if}
 </div>
 
 <style>
 	.app {
+		min-height: 100dvh;
 		display: grid;
-		place-items: center;
+		place-content: center;
+		justify-items: center;
 		gap: 1rem;
 	}
 
@@ -195,8 +190,7 @@
 		gap: 1rem;
 	}
 
-	.point,
-	.tiebreak {
+	.point {
 		width: 2ch;
 		color: var(--accent);
 	}
