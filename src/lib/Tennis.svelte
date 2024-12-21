@@ -28,7 +28,7 @@
 	let currentSet: CurrentSet = $state(0)
 
 	const sets: Set[] = $state([
-		[5, 0],
+		[0, 0],
 		[0, 0],
 		[0, 0],
 	])
@@ -52,6 +52,25 @@
 	const isWinner = $derived(Boolean(winner))
 
 	const isDeuce = $derived(game.every(point => point === 40))
+
+	// Helper functions
+	const getLoser = (winner: Player) => (winner === 0 ? 1 : 0)
+
+	const isSetComplete = (winner: Player, loser: Player) =>
+		(setScore[winner] === 6 && setScore[loser] < 5) ||
+		(setScore[winner] >= 7 && setScore[loser] < setScore[winner] - 1)
+
+	const isSetWinner = (set: CurrentSet) => {
+		if (setWinners[set] != undefined) {
+			return sets[set][0] > sets[set][1] ? 0 : 1
+		}
+	}
+
+	const isTiebreakComplete = (winner: Player, loser: Player) =>
+		tiebreak[winner] >= 7 && tiebreak[loser] < tiebreak[winner] - 1
+
+	const is6GamesAll = (winner: Player, loser: Player) =>
+		setScore[winner] === 6 && setScore[loser] === 6
 
 	// State mutation functions
 	const resetGame = () => {
@@ -77,11 +96,11 @@
 	}
 
 	const scoreTiebreak = (winner: Player) => {
-		const loser = winner === 0 ? 1 : 0
+		const loser = getLoser(winner)
 
 		tiebreak[winner]++
 
-		if (tiebreak[winner] >= 7 && tiebreak[loser] < tiebreak[winner] - 1) {
+		if (isTiebreakComplete(winner, loser)) {
 			setScore[winner]++
 			currentSet++
 			setWinners.push(winner)
@@ -91,7 +110,7 @@
 	}
 
 	const scorePoint = (winner: Player) => {
-		const loser = winner === 0 ? 1 : 0
+		const loser = getLoser(winner)
 
 		if (game[winner] === 'Ad') {
 			setScore[winner]++
@@ -116,15 +135,12 @@
 			resetGame()
 		}
 
-		if (
-			(setScore[winner] === 6 && setScore[loser] < 5) ||
-			(setScore[winner] >= 7 && setScore[loser] < setScore[winner] - 1)
-		) {
+		if (isSetComplete(winner, loser)) {
 			currentSet++
 			setWinners.push(winner)
 		}
 
-		if (setScore[winner] === 6 && setScore[loser] === 6) {
+		if (is6GamesAll(winner, loser)) {
 			isTiebreak = true
 		}
 	}
@@ -148,29 +164,29 @@
 	<div class="scoreboard">
 		<div>
 			<div>&nbsp;</div>
-			<div>Player 1</div>
-			<div>Player 2</div>
+			<div contenteditable>Player 1</div>
+			<div contenteditable>Player 2</div>
 		</div>
 		{#each sets as set, i}
 			<div class="sets">
 				<div class="label">Set {i + 1}</div>
-				<div>{set[0]}</div>
-				<div>{set[1]}</div>
+				<div class:accent={isSetWinner(i as CurrentSet) === 0}>{set[0]}</div>
+				<div class:accent={isSetWinner(i as CurrentSet) === 1}>{set[1]}</div>
 			</div>
 		{/each}
 		{#if isTiebreak}
 			<div class="points">
 				<div class="label">Point</div>
-				<div class="point">{tiebreak[0]}</div>
-				<div class="point">{tiebreak[1]}</div>
+				<div class="accent">{tiebreak[0]}</div>
+				<div class="accent">{tiebreak[1]}</div>
 			</div>
 		{:else}
 			<div class="points">
 				<div class="label">Point</div>
-				<div class="point">
+				<div class="accent">
 					{game[0]}
 				</div>
-				<div class="point">
+				<div class="accent">
 					{game[1]}
 				</div>
 			</div>
@@ -187,8 +203,6 @@
 		</div>
 	{/if}
 </div>
-
-<!-- Error: Unsupported Node.js version: v22.12.0. Please use Node 18 or Node 20 to build your project, or explicitly specify a runtime in your adapter configuration. -->
 
 <style>
 	.app {
@@ -230,7 +244,7 @@
 		font-size: var(--size-1-5);
 	}
 
-	.point {
+	.accent {
 		color: var(--accent);
 	}
 </style>
