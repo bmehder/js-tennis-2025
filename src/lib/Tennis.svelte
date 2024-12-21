@@ -6,6 +6,8 @@
 
 	type Point = 0 | 15 | 30 | 40 | 'Ad'
 
+	type TiebreakPoint = [number, number]
+
 	type Game = [Point, Point]
 
 	type Set = [number, number]
@@ -18,8 +20,10 @@
 		[40, 0],
 	])
 
-	// State
+	// Explicit State
 	const point: Game = $state([0, 0])
+
+	const tiebreakPoint: TiebreakPoint = $state([0, 0])
 
 	let currentSetIndex: CurrentSetIndex = $state(0)
 
@@ -31,6 +35,9 @@
 
 	const setWinners: Player[] = $state([])
 
+	let isTiebreak = $state(false)
+
+	// Derived State
 	const winner = $derived.by(() => {
 		if (setWinners.filter(x => x === 0).length === 2) {
 			return 'Player 1 Wins!'
@@ -44,15 +51,40 @@
 
 	const isDeuce = $derived(point.every(score => score === 40))
 
-	// State mutators
+	// State mutation functions
 	const resetGame = () => {
 		point[0] = 0
 		point[1] = 0
 	}
 
+	const resetTiebreakPoint = () => {
+		tiebreakPoint[0] = 0
+		tiebreakPoint[1] = 0
+	}
+
 	const deuce = () => {
 		point[0] = 40
 		point[1] = 40
+	}
+
+	const scoreTiebreak = (winner: Player) => {
+		const loser = winner === 0 ? 1 : 0
+		const setScore = sets[currentSetIndex]
+
+		tiebreakPoint[winner]++
+
+		if (
+			tiebreakPoint[winner] >= 7 &&
+			tiebreakPoint[loser] < tiebreakPoint[winner] - 1
+		) {
+			setScore[winner]++
+			currentSetIndex++
+			setWinners.push(winner)
+			resetTiebreakPoint()
+			resetGame()
+
+			isTiebreak = false
+		}
 	}
 
 	const scorePoint = (winner: Player) => {
@@ -88,11 +120,19 @@
 				setWinners.push(winner)
 			}
 		}
+
+		if (setScore[winner] === 6 && setScore[loser] === 6) {
+			isTiebreak = true
+		}
 	}
 
 	// Event handlers
 	const handleClick = (winner: Player) => {
-		scorePoint(winner)
+		if (isTiebreak) {
+			scoreTiebreak(winner)
+		} else {
+			scorePoint(winner)
+		}
 	}
 </script>
 
@@ -104,14 +144,21 @@
 				<div>{set[1]}</div>
 			</div>
 		{/each}
-		<div>
-			<div class="point">
-				{point[0]}
+		{#if isTiebreak}
+			<div class="tiebreak">
+				<div>{tiebreakPoint[0]}</div>
+				<div>{tiebreakPoint[1]}</div>
 			</div>
-			<div class="point">
-				{point[1]}
+		{:else}
+			<div>
+				<div class="point">
+					{point[0]}
+				</div>
+				<div class="point">
+					{point[1]}
+				</div>
 			</div>
-		</div>
+		{/if}
 	</div>
 
 	{#snippet button(winner: Player, playerNumber: number)}
@@ -125,6 +172,7 @@
 		{@render button(1, 2)}
 	</div>
 
+	<p>{isTiebreak}</p>
 	<p>{winner}</p>
 </div>
 
@@ -147,7 +195,8 @@
 		gap: 1rem;
 	}
 
-	.point {
+	.point,
+	.tiebreak {
 		width: 2ch;
 		color: var(--accent);
 	}
